@@ -21,8 +21,11 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.KGroupedStream;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 
 import java.util.Arrays;
@@ -63,15 +66,25 @@ public final class WordCount {
   }
 
   static void createWordCountStream(final StreamsBuilder builder) {
+
+    //KSTREAM-SOURCE-0000000000 --> from debugging
     final KStream<String, String> source = builder.stream(INPUT_TOPIC);
 
-    final KTable<String, Long> counts = source
-        .flatMapValues(value -> Arrays.asList(value.toLowerCase(Locale.getDefault()).split(" ")))
-        .groupBy((key, value) -> value)
-        .count();
+    //KSTREAM-FLATMAPVALUES-0000000001
+    final KStream<String, String> flatMapValues = source
+        .flatMapValues(value -> Arrays.asList(value.toLowerCase(Locale.getDefault()).split(" ")));
+
+    //KSTREAM-KEY-SELECT-0000000002
+    final KGroupedStream<String, String> groupBy = flatMapValues.groupBy((key, value) -> value);
+
+    //KSTREAM-AGGREGATE-0000000004
+    final KTable<String, Long> count = groupBy.count();
+
+    //KTABLE-TOSTREAM-0000000008
+    KStream<String, Long> counting = count.toStream();
 
     // need to override value serde to Long type
-    counts.toStream().to(OUTPUT_TOPIC, Produced.with(Serdes.String(), Serdes.Long()));
+    counting.to(OUTPUT_TOPIC, Produced.with(Serdes.String(), Serdes.Long())); //void
   }
 
   public static void main(final String[] args) {
@@ -79,7 +92,11 @@ public final class WordCount {
 
     final StreamsBuilder builder = new StreamsBuilder();
     createWordCountStream(builder);
-    final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+    Topology topology = builder.build();
+
+    System.out.println(topology.describe());
+
+    final KafkaStreams streams = new KafkaStreams(topology, props);
     final CountDownLatch latch = new CountDownLatch(1);
 
     // attach shutdown handler to catch control-c
