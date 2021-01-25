@@ -3,7 +3,7 @@
 ## Kafka Stack
 
 + [Confluent Plataform](https://docs.confluent.io/current/quickstart/ce-docker-quickstart.html#ce-docker-quickstart)
-+ [Confluent Docker Github](https://github.com/confluentinc/cp-all-in-on)
++ [Confluent Docker Github](https://github.com/confluentinc/cp-all-in-one)
 
 ```shell script
 $ docker-compose up 

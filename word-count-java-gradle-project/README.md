@@ -31,6 +31,11 @@ bin/kafka-topics.sh --create \
     --topic streams-wordcount-output \
     --config cleanup.policy=compact
 ```  
+### Producer
+
+```shell
+bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic streams-plaintext-input
+```
 
 ### Consumer
 ```shell script

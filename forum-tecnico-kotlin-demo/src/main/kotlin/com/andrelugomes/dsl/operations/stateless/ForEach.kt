@@ -1,4 +1,4 @@
-package com.github.andrelugomes
+package com.andrelugomes.dsl.operations.stateless
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serdes
@@ -6,40 +6,21 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream.Produced
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
-import org.apache.kafka.streams.state.KeyValueIterator
 
-import org.apache.kafka.streams.processor.PunctuationType
-
-import org.apache.kafka.streams.state.KeyValueStore
-
-import org.apache.kafka.streams.processor.ProcessorContext
-import java.time.Duration
-
-
-object WordCount {
-    const val INPUT_TOPIC = "streams-plaintext-input"
-    const val OUTPUT_TOPIC = "streams-wordcount-output"
+object ForEach {
+    const val SOURCE_TOPIC = "input"
 
     @JvmStatic
     fun main(args: Array<String>) {
+
+        //Configuration Properties
         val properties = Properties()
-        val builder = StreamsBuilder()
-
-        builder.stream<String, String>(INPUT_TOPIC)
-            .flatMapValues { value -> listOf(*value.toLowerCase().split(" ".toRegex()).toTypedArray()) }
-            .groupBy { _ , value -> value }
-            .count()
-            .toStream()
-            .to(OUTPUT_TOPIC, Produced.with(Serdes.String(), Serdes.Long()))
-
-        //Properties
         properties.putAll(
             mapOf(
-                StreamsConfig.APPLICATION_ID_CONFIG to "streams-wordcount-kotlin",
+                StreamsConfig.APPLICATION_ID_CONFIG to "for-each",
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
                 StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG to 0,
                 StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG to Serdes.String().javaClass.name,
@@ -48,17 +29,28 @@ object WordCount {
             )
         )
 
+        //Stream processing builder
+        val builder = StreamsBuilder()
+        builder.stream<String, String>(SOURCE_TOPIC)
+            .foreach { key, value -> print("key=${key}, value=${value}") }
+
+
+        //Build Topology of stream
         val topology = builder.build()
+        print(topology.describe())
+
         val streams = KafkaStreams(topology, properties)
         val latch = CountDownLatch(1)
 
         // attach shutdown handler to catch control-c
-        Runtime.getRuntime().addShutdownHook(object : Thread("streams-wordcount-shutdown-hook") {
+        Runtime.getRuntime().addShutdownHook(object : Thread("shutdown-hook") {
             override fun run() {
                 streams.close()
                 latch.countDown()
             }
         })
+
+        //Start...
         try {
             streams.start()
             latch.await()
