@@ -1,18 +1,18 @@
-package com.andrelugomes.dsl.operations.stateless
+package com.andrelugomes.dsl.operations.stateful
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
-import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
+import org.apache.kafka.streams.kstream.Produced
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
-object FlatMap {
-    private const val SOURCE_TOPIC = "input"
-    private const val SINK_TOPIC = "output"
+object GroupBy {
+    const val SOURCE_TOPIC = "input"
+    const val SINK_TOPIC = "output"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -21,7 +21,7 @@ object FlatMap {
         val properties = Properties()
         properties.putAll(
             mapOf(
-                StreamsConfig.APPLICATION_ID_CONFIG to "map",
+                StreamsConfig.APPLICATION_ID_CONFIG to "filter",
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
                 StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG to 0,
                 StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG to Serdes.String().javaClass.name,
@@ -30,14 +30,18 @@ object FlatMap {
             )
         )
 
-        //Stream processing builder
+        //KGroupedStream
         val builder = StreamsBuilder()
         builder.stream<String, String>(SOURCE_TOPIC)
-            .peek { key, value -> println("key=${key}, value=${value}") }
-            //.flatMap { key, value -> value.split(",").map { KeyValue(key, it) } }
-            .flatMapValues { value -> value.split(",") }
-            .peek { key, value -> println("key=${key}, value=${value}") }
-            .to(SINK_TOPIC)
+            //.groupBy { _, value -> value}
+            //.groupBy {key, _ -> key}
+            .groupByKey()
+            .count()
+            //.aggregate {} //****stateful****
+            //.windowedBy {} //****stateful****
+            //.reduce { _, value -> value } //****stateful****
+            .toStream() // Convert a KTable to KStreams
+            .to(SINK_TOPIC, Produced.valueSerde(Serdes.Long()))
 
         //Build Topology of stream
         val topology = builder.build()

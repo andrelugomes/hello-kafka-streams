@@ -13,17 +13,25 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    implementation "org.apache.kafka:kafka-streams:2.5.0"
+    implementation "org.apache.kafka:kafka-streams:2.6.0"
     implementation "org.slf4j:slf4j-simple:1.7.30"
 
     implementation "io.confluent:kafka-json-serializer:5.5.2"
 
     //implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.12.1"
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-}
+    testCompile 'junit:junit:4.12'
+    testCompile group: 'org.hamcrest', name: 'hamcrest', version: '2.1'
+    testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '2.1'
+    testCompile 'org.apache.kafka:kafka-streams-test-utils:2.6.0'
 
-test {
-    useJUnitPlatform()
+    //Embedded kafka
+    testCompile group:'org.apache.kafka', name:'kafka-streams', version:'2.6.0', classifier: 'test'
+    testCompile group:'org.apache.kafka', name:'kafka-clients', version:'2.6.0', classifier: 'test'
+    testCompile (group:'org.apache.kafka', name:'kafka_2.12', version:'2.6.0', classifier: 'test') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+    testCompile (group:'org.apache.kafka', name:'kafka_2.12', version:'2.6.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
 }

@@ -47,3 +47,21 @@ kafka-topics \
     --property print.value=true
 ```
 
+## FlatMap
+
+```shell
+var lines = listOf("Kafka is a really cool technology",
+      "Many enterprises use Kafka and Kafka Streams",
+      "I want to hear more about Kafka Streams and KSQL",
+      "KSQL is for Kafka what SQL is for databases")
+  println(lines)
+[Kafka is a really cool technology, Many enterprises use Kafka and Kafka Streams, I want to hear more about Kafka Streams and KSQL, KSQL is for Kafka what SQL is for databases]
+
+var mapped = lines.map { x -> x.split(" ") }
+    println(mapped)
+[[Kafka, is, a, really, cool, technology], [Many, enterprises, use, Kafka, and, Kafka, Streams], [I, want, to, hear, more, about, Kafka, Streams, and, KSQL], [KSQL, is, for, Kafka, what, SQL, is, for, databases]]
+
+var flatted = lines.flatMap { x -> x.split(" ") }
+   println(flatted)
+[Kafka, is, a, really, cool, technology, Many, enterprises, use, Kafka, and, Kafka, Streams, I, want, to, hear, more, about, Kafka, Streams, and, KSQL, KSQL, is, for, Kafka, what, SQL, is, for, databases]
+```
