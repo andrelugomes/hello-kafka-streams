@@ -7,6 +7,8 @@
 + topics
 + Build Project
 
+Download : https://www.apache.org/dyn/closer.cgi?path=/kafka/2.7.0/kafka_2.13-2.7.0.tgz
+
 ```shell script
 bin/zookeeper-server-start.sh config/zookeeper.properties
 ```

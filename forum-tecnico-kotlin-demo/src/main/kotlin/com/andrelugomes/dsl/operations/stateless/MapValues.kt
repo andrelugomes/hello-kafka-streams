@@ -21,7 +21,7 @@ object MapValues {
         val properties = Properties()
         properties.putAll(
             mapOf(
-                StreamsConfig.APPLICATION_ID_CONFIG to "1-concepts",
+                StreamsConfig.APPLICATION_ID_CONFIG to "map-values",
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
                 StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG to 0,
                 StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG to Serdes.String().javaClass.name,

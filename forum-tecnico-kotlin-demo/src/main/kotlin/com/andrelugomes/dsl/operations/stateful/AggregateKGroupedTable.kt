@@ -15,7 +15,7 @@ import kotlin.system.exitProcess
 
 object AggregateKGroupedTable {
     const val SOURCE_TOPIC = "input-sales"
-    const val SINK_TOPIC = "aggregation"
+    const val SINK_TOPIC = "aggregation-table"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -33,9 +33,11 @@ object AggregateKGroupedTable {
         )
 
         val builder = StreamsBuilder()
-        val grouped: KGroupedStream<String, Sales> = builder
-            .stream(SOURCE_TOPIC, Consumed.with(Serdes.String(), CustomSerdes.Sales()))
-            .groupByKey()
+        val table: KTable<String, Sales> = builder.table(SOURCE_TOPIC, Consumed.with(Serdes.String(), CustomSerdes.Sales()))
+        val groupedTable: KGroupedTable<String, Double> = table.groupBy { key, sales -> KeyValue(key, sales.amount)}
+
+        //table.toStream().to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))
+        table.toStream().to(SINK_TOPIC, Produced.with(Serdes.String(), CustomSerdes.Sales()))
 
         /**
          * brazil:{"country":"brazil", "amount":100.0}
@@ -49,18 +51,8 @@ object AggregateKGroupedTable {
          * :{"country":"argentina", "amount":2.0}
          *
          */
-        val table: KTable<String, Sales> = grouped.aggregate(
-            { Sales() }, //initalizer
-            { key, sale, total -> Sales(sale.country, total.amount?.plus(sale.amount!!)) }, //aggregator
-            Materialized.with<String, Sales, KeyValueStore<Bytes, ByteArray>>(
-                Serdes.String(),
-                CustomSerdes.Sales()
-            )  //State Store Materialized
-        )
 
-        val groupedTable: KGroupedTable<String?, Double?> = table.groupBy { key, value -> KeyValue(key, value.amount) }
-
-        groupedTable
+        /*groupedTable
             .aggregate(
                 { 0.0 }, //initalizer
                 { key, amount, total -> total?.plus(amount!!) }, //adder
@@ -71,7 +63,7 @@ object AggregateKGroupedTable {
                 )  //State Store
             )
             .toStream() // CDC
-            .to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))
+            .to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))*/
 
         //Build Topology of stream
         val topology = builder.build()

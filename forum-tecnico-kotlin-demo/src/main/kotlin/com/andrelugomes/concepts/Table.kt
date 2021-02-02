@@ -1,18 +1,20 @@
-package com.andrelugomes.dsl.operations.stateful
+package com.andrelugomes.concepts
 
+import com.andrelugomes.dsl.operations.stateful.CustomSerdes
+import com.andrelugomes.dsl.operations.stateful.Sales
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream.Produced
+import org.apache.kafka.streams.kstream.*
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
-object GroupBy {
-    const val SOURCE_TOPIC = "input"
-    const val SINK_TOPIC = "output"
+object Table {
+    const val SOURCE_TOPIC = "input-sales"
+    const val SINK_TOPIC = "table-compact"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -21,27 +23,36 @@ object GroupBy {
         val properties = Properties()
         properties.putAll(
             mapOf(
-                StreamsConfig.APPLICATION_ID_CONFIG to "group-by",
+                StreamsConfig.APPLICATION_ID_CONFIG to "table-compact",
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
                 StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG to 0,
-                StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG to Serdes.String().javaClass.name,
-                StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG to Serdes.String().javaClass.name,
+                StreamsConfig.PROCESSING_GUARANTEE_CONFIG to StreamsConfig.EXACTLY_ONCE,
                 ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest"
             )
         )
 
-        //KGroupedStream
+        /**
+         * brazil:{"country":"brazil", "amount":100.0}
+         * mexico:{"country":"mexico", "amount":10.0}
+         *
+         * argentina:{"country":"argentina", "amount":1.0}
+         * brazil:{"country":"brazil", "amount":2.0}
+         *
+         * brazil:null
+         * null:{"country":"argentina", "amount":2.0}
+         * :{"country":"argentina", "amount":2.0}
+         *
+         */
+
         val builder = StreamsBuilder()
-        builder.stream<String, String>(SOURCE_TOPIC)
-            //.groupBy { _, value -> value} //****stateless****
-            //.groupBy {key, _ -> key} //****stateless****
-            .groupByKey() //****stateless****
-            .count() //****stateful****
-            //.aggregate {} //****stateful****
-            //.windowedBy {} //****stateful****
-            //.reduce { _, value -> value } //****stateful****
-            .toStream() // Convert a KTable to KStreams
-            .to(SINK_TOPIC, Produced.valueSerde(Serdes.Long()))
+
+        //Read from kafka as a Table
+        val table: KTable<String, Sales> = builder.table(
+            SOURCE_TOPIC, Consumed.with(Serdes.String(),
+                CustomSerdes.Sales()
+            ))
+        table.toStream().to(SINK_TOPIC, Produced.with(Serdes.String(), CustomSerdes.Sales()))
+
 
         //Build Topology of stream
         val topology = builder.build()
@@ -67,4 +78,6 @@ object GroupBy {
         }
         exitProcess(0)
     }
+
+
 }

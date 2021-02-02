@@ -13,14 +13,14 @@
 # JSON Serde
 
 ```shell
-kafka-topics \
+./kafka-topics.sh \
 --create \
---bootstrap-server kafka:9092 \
+--bootstrap-server localhost:9092 \
 --replication-factor 1 \
 --partitions 1 \
 --topic temperatures-topic
 
-./kafka-topics.sh \                                                ─╯
+./kafka-topics.sh \                                                
 --create \
 --bootstrap-server localhost:9092 \
 --replication-factor 1 \
@@ -40,7 +40,7 @@ kafka-topics \
 "S2":{"station":"S2", "temperature": 27.8, "timestamp": 4}
 
 
-./kafka-console-consumer.sh --bootstrap-server localhost:9092 \    ─╯
+./kafka-console-consumer.sh --bootstrap-server localhost:9092 \ 
     --topic high-temperature-output \
     --from-beginning \             
     --property print.key=true \
@@ -64,4 +64,21 @@ var mapped = lines.map { x -> x.split(" ") }
 var flatted = lines.flatMap { x -> x.split(" ") }
    println(flatted)
 [Kafka, is, a, really, cool, technology, Many, enterprises, use, Kafka, and, Kafka, Streams, I, want, to, hear, more, about, Kafka, Streams, and, KSQL, KSQL, is, for, Kafka, what, SQL, is, for, databases]
+```
+
+## Table - Log Compact
+
+```shell
+./kafka-topics.sh --create --topic table-compact \
+--bootstrap-server localhost:9092 \
+--replication-factor 1 \
+--partitions 1 \
+--config cleanup.policy=compact \
+--config min.cleanable.dirty.ratio=0.005 \
+--config segment.ms=10000 
+
+./kafka-topics.sh --create --topic input-sales \                                          ─╯
+--bootstrap-server localhost:9092 \
+--replication-factor 1 \
+--partitions 1 
 ```
