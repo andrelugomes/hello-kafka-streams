@@ -1,18 +1,22 @@
 package com.andrelugomes.dsl.operations.stateless
 
+import com.andrelugomes.dsl.operations.stateful.CustomSerdes
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
-import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
+import org.apache.kafka.streams.kstream.Consumed
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
 object Branch {
-    private const val SOURCE_TOPIC = "input"
-    private const val SINK_TOPIC = "output"
+    private const val SOURCE_TOPIC = "input-sales"
+    private const val SINK_TOPIC_0 = "output-brazil"
+    private const val SINK_TOPIC_1 = "output-argentina"
+    private const val SINK_TOPIC_2 = "output-mexico"
+    private const val SINK_TOPIC_UNKNOWN = "output-unknown"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -35,13 +39,25 @@ object Branch {
 
         /**
          * Split the Stream by Predicates one by one, If no predicates match, the record will be drop
+         *
+         *
+         * brazil:{"country":"brazil", "amount":100.0}
+         * mexico:{"country":"mexico", "amount":10.0}
+         * argentina:{"country":"argentina", "amount":1.0}
+         * peru:{"country":"peru", "amount":1.0}
          */
-        builder.stream<String, String>(SOURCE_TOPIC)
+        var forks = builder.stream(SOURCE_TOPIC, Consumed.with(Serdes.String(), CustomSerdes.Sales()))
             .branch(
-                {key, value -> key.equals(123)},
-                {key, value -> key.equals(123)}
+                { key, _ -> key.equals("brazil")}, //first predicate
+                { key, _ -> key.equals("argentina")}, //second
+                { key, _ -> key.equals("mexico")}, //third
+                { _, _ -> true }, //fourth - everything else
             )
-            .to(SINK_TOPIC)
+
+        forks[0].to(SINK_TOPIC_0)
+        forks[1].to(SINK_TOPIC_1)
+        forks[2].to(SINK_TOPIC_2)
+        forks[3].to(SINK_TOPIC_UNKNOWN)
 
         //Build Topology of stream
         val topology = builder.build()

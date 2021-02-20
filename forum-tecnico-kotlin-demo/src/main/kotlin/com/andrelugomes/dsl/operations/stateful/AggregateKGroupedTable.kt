@@ -15,7 +15,24 @@ import kotlin.system.exitProcess
 
 object AggregateKGroupedTable {
     const val SOURCE_TOPIC = "input-sales"
-    const val SINK_TOPIC = "aggregation-table"
+
+    /**
+      ./kafka-topics.sh --create --topic aggregation-grouped-table \
+        --bootstrap-server localhost:9092 \
+        --replication-factor 1 \
+        --partitions 1
+     */
+
+    /**
+      ./kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+        --topic aggregation-grouped-table \
+        --from-beginning \
+        --property print.key=true \
+        --property print.value=true \
+        --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+        --property value.deserializer=org.apache.kafka.common.serialization.DoubleDeserializer
+     */
+    const val SINK_TOPIC = "aggregation-grouped-table"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -24,7 +41,7 @@ object AggregateKGroupedTable {
         val properties = Properties()
         properties.putAll(
             mapOf(
-                StreamsConfig.APPLICATION_ID_CONFIG to "sales-aggregation",
+                StreamsConfig.APPLICATION_ID_CONFIG to "sales-aggregation-grouped-table",
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
                 StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG to 0,
                 StreamsConfig.PROCESSING_GUARANTEE_CONFIG to StreamsConfig.EXACTLY_ONCE,
@@ -34,25 +51,28 @@ object AggregateKGroupedTable {
 
         val builder = StreamsBuilder()
         val table: KTable<String, Sales> = builder.table(SOURCE_TOPIC, Consumed.with(Serdes.String(), CustomSerdes.Sales()))
-        val groupedTable: KGroupedTable<String, Double> = table.groupBy { key, sales -> KeyValue(key, sales.amount)}
 
-        //table.toStream().to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))
-        table.toStream().to(SINK_TOPIC, Produced.with(Serdes.String(), CustomSerdes.Sales()))
+        table.toStream().peek { key, value -> println("key=${key}, value=${value}") }
+
+        val groupedTable: KGroupedTable<String, Double> = table.groupBy(
+            { _, sales -> KeyValue(sales.country, sales.amount)},
+            Grouped.with(Serdes.String(), Serdes.Double())
+        )
 
         /**
-         * brazil:{"country":"brazil", "amount":100.0}
-         * mexico:{"country":"mexico", "amount":10.0}
+         * joe:{"country":"brazil", "amount":100.0} //brazil	100.0
+         * mike:{"country":"mexico", "amount":10.0} //mexico	10.0
          *
-         * argentina:{"country":"argentina", "amount":1.0}
-         * brazil:{"country":"brazil", "amount":1.0}
-         *
-         * brazil:null
-         * null:{"country":"argentina", "amount":2.0}
-         * :{"country":"argentina", "amount":2.0}
-         *
-         */
+         * joe:{"country":"argentina", "amount":1.0} //brazil	0.0  e argentina	1.0
 
-        /*groupedTable
+         * mike:{"country":"brazil", "amount":11.0} // mexico	0.0  e brazil	11.0
+         * anna:{"country":"brazil", "amount":1.0} //brazil	12.0
+         *
+         * joe:null //argentina	0.0
+         * mike:null //brazil	1.0
+         * anna:null //brazil	0.0
+         */
+        groupedTable
             .aggregate(
                 { 0.0 }, //initalizer
                 { key, amount, total -> total?.plus(amount!!) }, //adder
@@ -62,8 +82,9 @@ object AggregateKGroupedTable {
                     Serdes.Double()
                 )  //State Store
             )
-            .toStream() // CDC
-            .to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))*/
+            .toStream()
+            .peek { key, value -> println("key=${key}, value=${value}") }// CDC
+            .to(SINK_TOPIC, Produced.with(Serdes.String(), Serdes.Double()))
 
         //Build Topology of stream
         val topology = builder.build()
